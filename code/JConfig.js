@@ -2,33 +2,68 @@ var fs = require('fs');
 var util = require("util");
 var path = require('path')
 var events = require('events');
-JConfig=function(path,data)
+var BaseConfig=function(data)
 {
-  events.EventEmitter.call(this);  
-  this.path=path;
-  this.data=data;
+   events.EventEmitter.call(this);
+   this.data=data;
 }
-util.inherits(JConfig,events.EventEmitter);
-JConfig.prototype.load=function(force)
+util.inherits(BaseConfig,events.EventEmitter);
+BaseConfig.prototype.load=function(force)
 {
   if (this.data==null || force)
   {
-    var data=fs.readFileSync(this.path);
+    this.data=this.loadData();
+  }
+}
+BaseConfig.prototype.loadData=function()
+{
+  return {};
+}
+BaseConfig.prototype.get=function(name,defaultValue)
+{
+  this.load();
+  return this.data[name]==null?defaultValue:this.data[name];
+}
+BaseConfig.prototype.set=function(name,value)
+{
+  this.load();
+  this.data[name]=value;
+}
+BaseConfig.prototype.save=function(callback){
+  if (callback==null)
+  {
+    return this.saveSync();
+  }
+  return this.saveAsync(callback);
+}
+BaseConfig.prototype.saveSync=function()
+{
+  return true;
+}
+BaseConfig.prototype.saveAsync=function(callback)
+{
+  callback(null);
+}
+var ConfigFile=function(path,data)
+{
+  BaseConfig.call(this,data);  
+  this.path=path;
+}
+util.inherits(ConfigFile,BaseConfig);
+ConfigFile.prototype.loadData=function()
+{
+  var data=fs.readFileSync(this.path);
     try {
-      this.data=JSON.parse(data);
+      return JSON.parse(data);
     }
     catch (err)
     {
-	this.data={};
-	//this.emit('error',err)
-	console.error(this.path+' is not a json file');
-    }      
-  }
+	console.error(this.path+' is not a json file');      
+	return {};
+    }        
 }
-JConfig.prototype.save=function()
+ConfigFile.prototype.saveAsync=function(callback)
 {
-    if (this.data!=null)
-    {
       var data = JSON.stringify(this.data||{});
       fs.writeFile(this.path, data, function (err){
 	if (err)
@@ -36,33 +71,26 @@ JConfig.prototype.save=function()
 	  this.emit('error',err)
 	  console.error('Save file '+this.path+'fail.');
 	  console.error(err.message);
-	  return;
 	}
+	callback(err);
+	return;	
       });
-    }
 }
-JConfig.prototype.get=function(name,defaultValue)
+ConfigFile.prototype.saveSync=function()
 {
-  this.load();
-  return this.data[name]==null?defaultValue:this.data[name];
+      var data = JSON.stringify(this.data||{});
+      fs.writeFileSync(this.path, data);
 }
-JConfig.prototype.set=function(name,value)
-{
-  this.load();
-  this.data[name]=value;
-}
-
-
-JConfigFolder=function(folder,configClass)
+var ConfigFolder=function(folder,configClass)
 {
   events.EventEmitter.call(this);    
   this.folder=folder||'./config/';
-  this.configClass=configClass||JConfig;
+  this.configClass=configClass||ConfigFile;
   this.data==null;
   this.suffix='.json';
 }
-util.inherits(JConfigFolder,events.EventEmitter);
-JConfigFolder.prototype.loadAll=function(force)
+util.inherits(ConfigFolder,events.EventEmitter);
+ConfigFolder.prototype.loadAll=function(force)
 {
   if (this.data==null ||force )
   {
@@ -79,7 +107,7 @@ JConfigFolder.prototype.loadAll=function(force)
   }
   return this.data;
 }
-JConfigFolder.prototype.saveAll=function()
+ConfigFolder.prototype.saveAll=function()
 {
     if (this.data==null)
       this.data={};
@@ -89,12 +117,12 @@ JConfigFolder.prototype.saveAll=function()
     }
 }
 
-JConfigFolder.prototype.getConfig=function(name)
+ConfigFolder.prototype.getConfig=function(name)
 {
   this.loadAll();
   return this.data[name] || null;
 }
-JConfigFolder.prototype.deleteConfig=function(name)
+ConfigFolder.prototype.deleteConfig=function(name)
 {
   this.loadAll();
   try{
@@ -105,22 +133,22 @@ JConfigFolder.prototype.deleteConfig=function(name)
     return false;
   }
 }
-JConfigFolder.prototype.hasConfig=function(name)
+ConfigFolder.prototype.hasConfig=function(name)
 {
   this.loadAll();
   return this.data[name]==null?false:true;
 }
-JConfigFolder.prototype.getConfigs=function(name)
+ConfigFolder.prototype.getConfigs=function(name)
 {
  this.loadAll();
  return this.data;
 }
-JConfigFolder.prototype.setConfig=function(name,value)
+ConfigFolder.prototype.setConfig=function(name,value)
 {
   this.loadAll();
   this.data[name]=value;
 }
-JConfigFolder.prototype.addConfig=function(name)
+ConfigFolder.prototype.addConfig=function(name)
 {
   this.loadAll();
   if (this.data[name]==null)
@@ -130,5 +158,6 @@ JConfigFolder.prototype.addConfig=function(name)
     return config;
   }
 }
-module.exports.Folder=JConfigFolder;
-module.exports.Config=JConfig;
+module.exports.ConfigFolder=ConfigFolder;
+module.exports.ConfigFile=ConfigFile;
+module.exports.BaseConfig=BaseConfig;
