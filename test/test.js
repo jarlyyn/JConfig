@@ -7,13 +7,18 @@ exports.base=function(test){
   var testName='test';
   var testValue='value';
   var defaultValue='default';
+  var testValue2='value2';
+  var testName2='test2';  
+  var defaultValue2='default2';
   var presetData={};  
   var model=new JConfig.BaseConfig(presetData);
   test.ok(model.data==presetData);  
   test.ok(model.get(testName)==null);
   test.ok(model.get(testName,defaultValue)==defaultValue);
   model.set(testName,testValue);
+  model.set(testName2,testValue2);
   test.ok(model.get(testName)==testValue);
+  test.ok(model.get(testName2)==testValue2);
   test.done();
 };
 exports.file=function(test)
