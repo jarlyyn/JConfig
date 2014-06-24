@@ -2,6 +2,7 @@ var fs = require('fs');
 var util = require("util");
 var path = require('path')
 var events = require('events');
+//Base class of config.
 var BaseConfig=function(data)
 {
    events.EventEmitter.call(this);
@@ -44,6 +45,8 @@ BaseConfig.prototype.saveAsync=function(callback)
 {
   callback(null);
 }
+
+//Config useing json file class.
 var ConfigFile=function(path,data)
 {
   BaseConfig.call(this,data);  
@@ -81,6 +84,7 @@ ConfigFile.prototype.saveSync=function()
       var data = JSON.stringify(this.data||{});
       fs.writeFileSync(this.path, data);
 }
+//Configs manager as a json config folder.Can use custom class passed as 2nd params.
 var ConfigFolder=function(folder,configClass)
 {
   events.EventEmitter.call(this);    
