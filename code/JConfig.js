@@ -6,19 +6,30 @@ var events = require('events');
 var BaseConfig=function(data)
 {
    events.EventEmitter.call(this);
-   this.data=data;
+   this.data=data==null?{}:data;
+   this._loaded=false;
 }
 util.inherits(BaseConfig,events.EventEmitter);
 BaseConfig.prototype.load=function(force)
 {
-  if (this.data==null || force)
+  if (this._loaded==false || force)
   {
-    this.data=this.loadData();
+    var data=this.loadData();
+    if (data!=null)
+    {
+      this.data=data;
+    }
+    this._loaded=true;
   }
 }
 BaseConfig.prototype.loadData=function()
 {
   return {};
+}
+BaseConfig.prototype.getData=function()
+{
+  this.load();
+  return this.data;
 }
 BaseConfig.prototype.get=function(name,defaultValue)
 {
@@ -55,28 +66,33 @@ var ConfigFile=function(path,data)
 util.inherits(ConfigFile,BaseConfig);
 ConfigFile.prototype.loadData=function()
 {
-  var data=fs.readFileSync(this.path);
-    try {
+    try {  
+      var data=fs.readFileSync(this.path);
+    }catch (err)
+    {
+      return null;
+    }
+    try{
       return JSON.parse(data);
     }
     catch (err)
     {
-	console.error(this.path+' is not a json file');      
-	return {};
+        console.error(this.path+' is not a json file');      
+        return null;
     }        
 }
 ConfigFile.prototype.saveAsync=function(callback)
 {
       var data = JSON.stringify(this.data||{});
       fs.writeFile(this.path, data, function (err){
-	if (err)
-	{
-	  this.emit('error',err)
-	  console.error('Save file '+this.path+'fail.');
-	  console.error(err.message);
-	}
-	callback(err);
-	return;	
+        if (err)
+        {
+          this.emit('error',err)
+          console.error('Save file '+this.path+'fail.');
+          console.error(err.message);
+        }
+        callback(err);
+        return; 
       });
 }
 ConfigFile.prototype.saveSync=function()
@@ -105,7 +121,7 @@ ConfigFolder.prototype.loadAll=function(force)
       var fullname=files[i]
       if (path.extname(fullname).toLowerCase()==this.suffix)
       {
-	this.data[path.basename(fullname,this.suffix)] = new this.configClass(path.join(this.folder,fullname));
+        this.data[path.basename(fullname,this.suffix)] = new this.configClass(path.join(this.folder,fullname));
       }
     }
   }
